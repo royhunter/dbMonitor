@@ -2,8 +2,6 @@
 import socket
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-PORT_NUMBER = 8000
-
 
 class myHandler(BaseHTTPRequestHandler):
     def reply_ok(self, content):
@@ -34,11 +32,16 @@ class myHandler(BaseHTTPRequestHandler):
         return
 
 
-try:
-    server = HTTPServer(('', PORT_NUMBER), myHandler)
-    print 'Started httpserver on port ', PORT_NUMBER
-    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.serve_forever()
-except KeyboardInterrupt:
-    print '^C received, shutting down the web server'
-    server.socket.close()
+class dbmHttpServer():
+    def __init__(self, port):
+        self.port = port
+    
+    def Run(self):
+        try:
+            server = HTTPServer(('', self.port), myHandler)
+            print 'Started httpserver on port ', self.port
+            server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print '^C received, shutting down the web server'
+            server.socket.close()
