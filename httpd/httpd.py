@@ -3,22 +3,33 @@ import socket
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 
+######################
+# URL GET
+######################
+def root_get(myHttpHandler):
+    myHttpHandler.reply_ok('Hello, Welcome dbMonitor')
+
 def version_get(myHttpHandler):
-    myHttpHandler.reply_ok(myHttpHandler.path)
+    myHttpHandler.reply_ok(myHttpHandler.patHh)
 
 def config_get(myHttpHandler):
     myHttpHandler.reply_ok(myHttpHandler.path)
 
+######################
+# URL POST
+######################
 def config_post(myHttpHandler):
     content_len = int(myHttpHandler.headers.getheader('content-length', 0))
     content = myHttpHandler.rfile.read(content_len)
     myHttpHandler.reply_ok(content)
+
 
 url_post_map = {
     '/config' : config_post
 }
 
 url_get_map = {
+    '/' : root_get,
     '/version' : version_get,
     '/config' : config_get
 }
@@ -60,11 +71,11 @@ class dbmHttpServer():
         self.port = port
 
     def Run(self):
-        try:
-            server = HTTPServer(('', self.port), myHandler)
-            print 'Started httpserver on port ', self.port
-            server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server.serve_forever()
-        except KeyboardInterrupt:
-            print '^C received, shutting down the web server'
-            server.socket.close()
+        self.server = HTTPServer(('', self.port), myHandler)
+        print 'Started httpserver on port ', self.port
+        self.server.allow_reuse_address = True
+        self.server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.serve_forever()
+    
+    def Stop(self):
+        self.server.socket.close()
