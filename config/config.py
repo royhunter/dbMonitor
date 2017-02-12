@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import json
-
+import key
 
 ######################
 # URL GET
@@ -27,6 +27,7 @@ def config_post(myHttpHandler):
 
 def config_json_parser(json_string):
     print "config_json_parser"
+    print key.JSON_SMTP_SERVER
     x = json.loads(json_string)
     print x
     print x['name']
