@@ -3,7 +3,34 @@ import socket
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 
+def version_get(myHttpHandler):
+    myHttpHandler.reply_ok(myHttpHandler.path)
+
+def config_get(myHttpHandler):
+    myHttpHandler.reply_ok(myHttpHandler.path)
+
+def config_post(myHttpHandler):
+    content_len = int(myHttpHandler.headers.getheader('content-length', 0))
+    content = myHttpHandler.rfile.read(content_len)
+    myHttpHandler.reply_ok(content)
+
+url_post_map = {
+    '/config' : config_post
+}
+
+url_get_map = {
+    '/version' : version_get,
+    '/config' : config_get
+}
+
 class myHandler(BaseHTTPRequestHandler):
+
+    def version_handle(self):
+        self.reply_ok('version')
+
+    def config_handle(self):
+        self.reply_ok('config')
+
     def reply_ok(self, content):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -14,28 +41,24 @@ class myHandler(BaseHTTPRequestHandler):
         self.send_error(404,'Path Not Found: %s' % self.path)
 
     def do_GET(self):
-        if self.path == '/version':
-            self.reply_ok('version')
-        elif self.path == '/config':
-            self.reply_ok('config')
-        else:
-            self.reply_err();
+        try:
+            url_get_map[self.path](self)
+        except:
+            self.reply_err()
         return
 
     def do_POST(self):
-        if self.path == '/config':
-            content_len = int(self.headers.getheader('content-length', 0))
-            content = self.rfile.read(content_len)
-            self.reply_ok(content)
-        else:
-            self.reply_err();
+        try:
+            url_post_map[self.path](self)
+        except:
+            self.reply_err()
         return
 
 
 class dbmHttpServer():
     def __init__(self, port):
         self.port = port
-    
+
     def Run(self):
         try:
             server = HTTPServer(('', self.port), myHandler)
