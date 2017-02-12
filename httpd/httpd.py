@@ -3,36 +3,29 @@ import socket
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 
-######################
-# URL GET
-######################
-def root_get(myHttpHandler):
-    myHttpHandler.reply_ok('Hello, Welcome dbMonitor')
-
-def version_get(myHttpHandler):
-    myHttpHandler.reply_ok(myHttpHandler.patHh)
-
-def config_get(myHttpHandler):
-    myHttpHandler.reply_ok(myHttpHandler.path)
-
-######################
-# URL POST
-######################
-def config_post(myHttpHandler):
-    content_len = int(myHttpHandler.headers.getheader('content-length', 0))
-    content = myHttpHandler.rfile.read(content_len)
-    myHttpHandler.reply_ok(content)
+import config
 
 
-url_post_map = {
-    '/config' : config_post
-}
 
-url_get_map = {
-    '/' : root_get,
-    '/version' : version_get,
-    '/config' : config_get
-}
+
+# url_post_map = {
+#     '/config' : config_post
+# }
+
+# url_get_map = {
+#     '/' : root_get,
+#     '/version' : version_get,
+#     '/config' : config_get
+# }
+
+url_post_map = {}
+url_get_map  = {}
+
+def url_get_mapping_register(path, func):
+    url_get_map[path] = func
+
+def url_post_mapping_register(path, func):
+    url_post_map[path] = func
 
 class myHandler(BaseHTTPRequestHandler):
 
@@ -53,15 +46,18 @@ class myHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
+            print 'get url is ' + self.path
             url_get_map[self.path](self)
-        except:
+        except Exception, e:
+            print Exception, ":" ,e
             self.reply_err()
         return
 
     def do_POST(self):
         try:
             url_post_map[self.path](self)
-        except:
+        except Exception, e:
+            print Exception, ":" ,e
             self.reply_err()
         return
 
