@@ -18,6 +18,8 @@ def dbmHttpdThread():
 
 
 def main():
+    config.json_config_load_file()
+
     t = threading.Thread(target = dbmHttpdThread, name = 'dbm thread')
     t.daemon = True
     t.start()
