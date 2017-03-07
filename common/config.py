@@ -13,6 +13,7 @@ class Config(object):
 
     def __init__(self):
         self.config = {}
+        self.spu_monitor = {}  # itl_name is key
 
     def json_config_save2file(self):
         """json_config_save_file
@@ -78,3 +79,41 @@ class Config(object):
             glb_monitor[key.JSON_GLB_UNTRIGGER_TIME] = glb_monitor_para[key.JSON_GLB_UNTRIGGER_TIME]
         if glb_monitor:
             self.config[key.JSON_GLOBAL_MONITOR] = glb_monitor
+
+    def json_lpu_monitor_parser(self, json_object):
+        """json_spu_monitor_parser
+        """
+        lpu_monitor = {}
+        if key.JSON_LPU_MONITOR not in json_object:
+            return
+
+        if lpu_monitor:
+            self.config[key.JSON_LPU_MONITOR] = json_object[key.JSON_LPU_MONITOR]
+
+
+    def json_spu_monitor_parser(self, json_object):
+        """json_spu_monitor_parser
+        """
+        if key.JSON_SPU_MONITOR not in json_object:
+            return
+
+        itl_list = json_object[key.JSON_SPU_MONITOR]
+        print itl_list
+        if itl_list is None:
+            return
+
+        for itl in itl_list:
+            itl_name = itl[key.JSON_ITL]
+            itl_op = itl[key.JSON_ITL_OPERATION]
+            if itl_op == key.JSON_ITL_UPDATE:
+                self.spu_monitor[itl_name] = itl
+                del self.spu_monitor[itl_name][key.JSON_ITL_OPERATION]
+            elif self.spu_monitor.has_key(itl_name) and itl_op == key.JSON_ITL_DELETE:
+                del self.spu_monitor[itl_name]
+
+        del self.config[key.JSON_SPU_MONITOR]
+        self.config[key.JSON_SPU_MONITOR] = []
+        for itl in self.spu_monitor:
+            self.config[key.JSON_SPU_MONITOR].append(self.spu_monitor[itl])
+
+
