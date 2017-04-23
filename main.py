@@ -4,7 +4,7 @@
 
 import time
 
-from common import config, dbm
+from common import config, dbm, db
 
 
 
@@ -16,6 +16,10 @@ def dbm_main():
 
     dbmonitor = dbm.Dbm(dbmconfig)
     dbmonitor.start()
+
+    dbScan = db.DB('192.168.1.205', 'root', 'sanscout123', 'sanscout')
+    dbScan.Start()
+
     try:
         while True:
             time.sleep(1)
