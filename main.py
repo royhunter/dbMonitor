@@ -17,8 +17,8 @@ def dbm_main():
     dbmonitor = dbm.Dbm(dbmconfig)
     dbmonitor.start()
 
-    dbScan = db.DB('192.168.1.205', 'root', 'sanscout123', 'sanscout')
-    dbScan.Start()
+    db_scan = db.DB('192.168.1.205', 'root', 'sanscout123', 'sanscout', dbmconfig)
+    db_scan.start()
 
     try:
         while True:

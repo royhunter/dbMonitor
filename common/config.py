@@ -81,14 +81,12 @@ class Config(object):
             self.config[key.JSON_GLOBAL_MONITOR] = glb_monitor
 
     def json_lpu_monitor_parser(self, json_object):
-        """json_spu_monitor_parser
+        """json_lpu_monitor_parser
         """
-        lpu_monitor = {}
         if key.JSON_LPU_MONITOR not in json_object:
             return
 
-        if lpu_monitor:
-            self.config[key.JSON_LPU_MONITOR] = json_object[key.JSON_LPU_MONITOR]
+        self.config[key.JSON_LPU_MONITOR] = json_object[key.JSON_LPU_MONITOR]
 
 
     def json_spu_monitor_parser(self, json_object):

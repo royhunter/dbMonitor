@@ -16,6 +16,10 @@ JSON_GLB_TRIGGER_THRE = "trigger_thre"
 JSON_GLB_UNTRIGGER_TIME = "untrigger_time"
 
 
+JSON_OP = "op"
+JSON_THRESHOLD = "threshold"
+
+
 JSON_LPU_MONITOR = "lpu_monitor"
 
 
