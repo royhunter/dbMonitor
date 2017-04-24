@@ -27,6 +27,12 @@ def config_get(dbmconfig, http_handle):
     json_str = json.dumps(dbmconfig.config)
     http_handle.reply_ok(json_str)
 
+def debug_get(dbmconfig, http_handle):
+    """debug_get
+    """
+    json_str = json.dumps(dbmconfig.config)
+    http_handle.reply_ok(json_str)
+
 
 ######################
 # URL POST

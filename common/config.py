@@ -12,6 +12,7 @@ class Config(object):
     CONFIG_FILE_NAME = './config.json'
 
     def __init__(self):
+        self.lpu_entry_stat = {}
         self.config = {}
         self.spu_monitor = {}  # itl_name is key
 

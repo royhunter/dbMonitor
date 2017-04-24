@@ -20,7 +20,7 @@ class DB(object):
         self.dbmconfig = dbm_config
         self.conn = None
         self.curs = None
-        self.lpu_entry_stat = {}
+        self.lpu_entry_stat = dbm_config.lpu_entry_stat
         self.dbt = threading.Thread(target=self.db_thread,
                                     name='db thread')
 
@@ -42,19 +42,19 @@ class DB(object):
         print name
         print value
 
-        if self.dbmconfig.config[key.JSON_LPU_MONITOR] is None:
+        if key.JSON_LPU_MONITOR not in self.dbmconfig.config:
             return
 
-        if self.dbmconfig.config[key.JSON_LPU_MONITOR][name] is None:
+        if name not in self.dbmconfig.config[key.JSON_LPU_MONITOR]:
             return
 
-        if self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] is None:
+        if key.JSON_OP not in self.dbmconfig.config[key.JSON_LPU_MONITOR][name]:
+            return
+        
+        if key.JSON_THRESHOLD not in self.dbmconfig.config[key.JSON_LPU_MONITOR][name]:
             return
 
-        if self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD] is None:
-            return
-
-        if self.lpu_entry_stat[name] is None:
+        if name not in self.lpu_entry_stat:
             entry_stat = {"trigger_time": 0,
                           "measure":0,
                           "hit":0,
@@ -65,14 +65,17 @@ class DB(object):
             self.lpu_entry_stat[name] = entry_stat
 
         trigger_time = self.lpu_entry_stat[name]["trigger_time"]
+        print trigger_time
         if trigger_time != 0:
             untriggertime = self.dbmconfig[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_UNTRIGGER_TIME]
+            print "untriggertime is " + str(untriggertime)
             if timestamp > (trigger_time + untriggertime):
                 self.lpu_entry_stat[name]["trigger_time"] = 0
                 self.lpu_entry_stat[name]["slot"] = 0
                 self.lpu_entry_stat[name]["index"] = 0
 
         if self.lpu_entry_stat[name]["trigger_time"] == 0:
+            print self.dbmconfig.config[key.JSON_LPU_MONITOR]
             if self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == "==":
                 if value == self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
                     hit = 1
@@ -93,7 +96,7 @@ class DB(object):
             hitcnt = self.lpu_entry_stat[name]["hit_cnt"] + 1
             self.lpu_entry_stat[name]["hit_cnt"] = hitcnt
 
-        trigger = hit_status(hit)
+        trigger = self.hit_status(hit, name)
         if trigger:
             triggercnt = self.lpu_entry_stat[name]["trigger_cnt"] + 1
             self.lpu_entry_stat[name]["trigger_cnt"] = triggercnt
@@ -102,35 +105,35 @@ class DB(object):
             #send_alarm_mail(alarm_str);
 
 
-        def hit_status(hit):
-            """hit_status
-            """
-            print hit
-            index = self.lpu_entry_stat[name]["index"]
-            slot = self.lpu_entry_stat[name]["slot"]
-            if hit:
-                mask = 1 << index
-                self.lpu_entry_stat[name]["slot"] = slot | mask
-            else:
-                mask = ~(1 << index)
-                self.lpu_entry_stat[name]["slot"] = slot & mask
+    def hit_status(self, hit, name):
+        """hit_status
+        """
+        print hit
+        index = self.lpu_entry_stat[name]["index"]
+        slot = self.lpu_entry_stat[name]["slot"]
+        if hit:
+            mask = 1 << index
+            self.lpu_entry_stat[name]["slot"] = slot | mask
+        else:
+            mask = ~(1 << index)
+            self.lpu_entry_stat[name]["slot"] = slot & mask
 
-            index = index + 1
-            measurements = self.dbmconfig[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_MEASURMENTS]
-            if index == measurements:
-                index = 0
+        index = index + 1
+        measurements = self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_MEASURMENTS]
+        if index == measurements:
+            index = 0
 
-            self.lpu_entry_stat[name]["index"] = 0
-            triggercnt = 0
-            slot = self.lpu_entry_stat[name]["slot"]
-            for i in range(measurements):
-                if slot & (1<<i):
-                    triggercnt = triggercnt + 1
+        self.lpu_entry_stat[name]["index"] = 0
+        triggercnt = 0
+        slot = self.lpu_entry_stat[name]["slot"]
+        for i in range(measurements):
+            if slot & (1<<i):
+                triggercnt = triggercnt + 1
 
-            if triggercnt >= self.dbmconfig[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_TRIGGER_THRE]:
-                return 1
-            else:
-                return 0
+        if triggercnt >= self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_TRIGGER_THRE]:
+            return 1
+        else:
+            return 0
 
 
 
@@ -140,8 +143,8 @@ class DB(object):
         while 1:
             print "1s"
             select_time = int(time.time()) - 5
-            lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
-            #LPU_QUERY_SQL = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1492500753"
+            #lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
+            lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1492500753"
             print lpu_query_sql
 
             self.curs.execute(lpu_query_sql)
@@ -201,7 +204,7 @@ class DB(object):
                 avg_frame_to_r_rdy = row[53]
                 pending_frame_to_r_rdy = row[54]
                 print "sequence = %d, loss_signal_event=%d,code_violations=%d,loss_sync_eventage=%d,lip_event=%d,nos_ols_events=%d" % \
-                        (sequence, loss_signal_event, code_violations, loss_sync_event, lip_event, nos_ols_events )
+                        (row[5], loss_signal_event, code_violations, loss_sync_event, lip_event, nos_ols_events )
 
 
 

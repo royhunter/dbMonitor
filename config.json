@@ -1,1 +1,1 @@
-{"SMTP_PORT": 123, "SMTP_SERVER": "1233"}
+{"SMTP_PORT": 123, "SMTP_SERVER": "1233", "lpu_monitor":{"sequence": {"op":">", "threshold":20}}, "glb_monitor":{"measurements":5, "trigger_thre":5, "untrigger_time":10}}

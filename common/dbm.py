@@ -22,6 +22,7 @@ class Dbm(object):
         self.urlhandle.url_get_mapping_register('/', url.root_get)
         self.urlhandle.url_get_mapping_register('/version', url.version_get)
         self.urlhandle.url_get_mapping_register('/config', url.config_get)
+        self.urlhandle.url_get_mapping_register('/debug', url.debug_get)
         self.urlhandle.url_post_mapping_register('/config', url.config_post)
         httpserver = httpd.HttpServer(httpd.HttpServer.PORT_NUMBER,
                                       self.config,
