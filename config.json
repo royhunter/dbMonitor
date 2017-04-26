@@ -1,1 +1,1 @@
-{"SMTP_PORT": 123, "SMTP_SERVER": "1233", "lpu_monitor":{"sequence": {"op":">", "threshold":20}}, "glb_monitor":{"measurements":5, "trigger_thre":5, "untrigger_time":10}}
+{"SMTP_PORT": 123, "SMTP_SERVER": "1233", "glb_monitor": {"untrigger_time": 10, "trigger_thre": 4, "measurements": 5}, "lpu_monitor": {"sequence": {"threshold": 300, "op": ">"}}, "spu_monitor":{"0x7f0500-0x7f0000-0x0009":{"bps":{"op": ">", "threshold": 100}}}}

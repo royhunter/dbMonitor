@@ -30,7 +30,7 @@ def config_get(dbmconfig, http_handle):
 def debug_get(dbmconfig, http_handle):
     """debug_get
     """
-    json_str = json.dumps(dbmconfig.config)
+    json_str = json.dumps(dbmconfig.lpu_entry_stat)
     http_handle.reply_ok(json_str)
 
 

@@ -21,10 +21,9 @@ JSON_THRESHOLD = "threshold"
 
 
 JSON_LPU_MONITOR = "lpu_monitor"
-
-
 JSON_SPU_MONITOR = "spu_monitor"
 JSON_ITL = "itl"
+
 JSON_ITL_OPERATION = "operation"
 JSON_ITL_UPDATE = "update"
 JSON_ITL_DELETE = "delete"

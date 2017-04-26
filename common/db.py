@@ -21,6 +21,7 @@ class DB(object):
         self.conn = None
         self.curs = None
         self.lpu_entry_stat = dbm_config.lpu_entry_stat
+        self.spu_entry_stat = dbm_config.spu_entry_stat
         self.dbt = threading.Thread(target=self.db_thread,
                                     name='db thread')
 
@@ -29,18 +30,166 @@ class DB(object):
         """
         print "start db connect"
         self.conn = MySQLdb.connect(host=self.host, port=3306, user=self.user, passwd=self.passwd)
+        print "db connect done"
         self.curs = self.conn.cursor()
         self.conn.select_db(self.dbname)
         self.dbt.daemon = True
         self.dbt.start()
 
+
+    def spu_monitor(self, entrystat, timestamp, itl, name, value):
+        if name not in entrystat:
+            entry_stat = {"trigger_time": 0,
+                          "measure":0,
+                          "hit":0,
+                          "slot":0,
+                          "index":0,
+                          "hit_cnt":0,
+                          "trigger_cnt":0}
+            entrystat[name] = entry_stat
+
+        trigger_time = entrystat[name]["trigger_time"]
+        print "last trigger time %d" % trigger_time
+        if trigger_time != 0:
+            untriggertime = self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_UNTRIGGER_TIME]
+            print "untriggertime is " + str(untriggertime)
+            offset = timestamp - trigger_time
+            print "%d second passed" % offset
+            if timestamp > (trigger_time + untriggertime):
+                print "clear stat"
+                entrystat[name]["trigger_time"] = 0
+                entrystat[name]["slot"] = 0
+                entrystat[name]["index"] = 0
+            else:
+                print "no need send alarm"
+                return
+
+        hit = 0
+        if entrystat[name]["trigger_time"] == 0:
+            print self.dbmconfig.config[key.JSON_SPU_MONITOR]
+            if self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_OP] == "==":
+                print "=="
+                if value == self.dbmconfig.config[key.JSON_LPU_MONITOR][itl][name][key.JSON_THRESHOLD]:
+                    hit = 1
+                else:
+                    hit = 0
+            elif self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_OP] == ">":
+                print ">"
+                print "value: " + str(value)
+                if value > self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_THRESHOLD]:
+                    hit = 1
+                else:
+                    hit = 0
+            else:
+                print "<"
+                if value < self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_THRESHOLD]:
+                    hit = 1
+                else:
+                    hit = 0
+
+        if hit:
+            hitcnt = entrystat[name]["hit_cnt"] + 1
+            entrystat[name]["hit_cnt"] = hitcnt
+
+        trigger = self.hit_status(entrystat, hit, name)
+        if trigger:
+            triggercnt = entrystat[name]["trigger_cnt"] + 1
+            entrystat[name]["trigger_cnt"] = triggercnt
+            entrystat[name]["trigger_time"] = timestamp
+            print "send alarm mail"
+            #send_alarm_mail(alarm_str);
+    
+    
+    def entry_monitor(self, entrystat, timestamp, name, value):
+        if name not in entrystat:
+            entry_stat = {"trigger_time": 0,
+                          "measure":0,
+                          "hit":0,
+                          "slot":0,
+                          "index":0,
+                          "hit_cnt":0,
+                          "trigger_cnt":0}
+            entrystat[name] = entry_stat
+
+        trigger_time = entrystat[name]["trigger_time"]
+        print "last trigger time %d" % trigger_time
+        if trigger_time != 0:
+            untriggertime = self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_UNTRIGGER_TIME]
+            print "untriggertime is " + str(untriggertime)
+            offset = timestamp - trigger_time
+            print "%d second passed" % offset
+            if timestamp > (trigger_time + untriggertime):
+                print "clear stat"
+                entrystat[name]["trigger_time"] = 0
+                entrystat[name]["slot"] = 0
+                entrystat[name]["index"] = 0
+            else:
+                print "no need send alarm"
+                return
+
+        hit = 0
+        if entrystat[name]["trigger_time"] == 0:
+            print self.dbmconfig.config[key.JSON_LPU_MONITOR]
+            if self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == "==":
+                print "=="
+                if value == self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
+                    hit = 1
+                else:
+                    hit = 0
+            elif self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == ">":
+                print ">"
+                print "value: " + str(value)
+                if value > self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
+                    hit = 1
+                else:
+                    hit = 0
+            else:
+                print "<"
+                if value < self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
+                    hit = 1
+                else:
+                    hit = 0
+
+        if hit:
+            hitcnt = entrystat[name]["hit_cnt"] + 1
+            entrystat[name]["hit_cnt"] = hitcnt
+
+        trigger = self.hit_status(entrystat, hit, name)
+        if trigger:
+            triggercnt = entrystat[name]["trigger_cnt"] + 1
+            entrystat[name]["trigger_cnt"] = triggercnt
+            entrystat[name]["trigger_time"] = timestamp
+            print "send alarm mail"
+            #send_alarm_mail(alarm_str);
+
+
+    def spu_entry_monitor(self, timestamp, itl, name, value):
+        """spu_entry_monitor
+        """
+
+        if key.JSON_SPU_MONITOR not in self.dbmconfig.config:
+            return
+
+        if itl not in self.dbmconfig.config[key.JSON_SPU_MONITOR]:
+            return
+
+        if name not in self.dbmconfig.config[key.JSON_SPU_MONITOR][itl]:
+            return
+        
+        if key.JSON_OP not in self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name]:
+            return
+        
+        if key.JSON_THRESHOLD not in self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name]:
+            return
+
+        if itl not in self.spu_entry_stat:
+            self.spu_entry_stat[itl] = {}
+        
+        self.spu_monitor(self.spu_entry_stat[itl], timestamp, itl, name, value)
+
     def lpu_entry_monitor(self, timestamp, name, value):
         """lpu_monitor
         """
-        print "lpu_entry_monitor"
-        print timestamp
-        print name
-        print value
 
         if key.JSON_LPU_MONITOR not in self.dbmconfig.config:
             return
@@ -54,81 +203,37 @@ class DB(object):
         if key.JSON_THRESHOLD not in self.dbmconfig.config[key.JSON_LPU_MONITOR][name]:
             return
 
-        if name not in self.lpu_entry_stat:
-            entry_stat = {"trigger_time": 0,
-                          "measure":0,
-                          "hit":0,
-                          "slot":0,
-                          "index":0,
-                          "hit_cnt":0,
-                          "trigger_cnt":0}
-            self.lpu_entry_stat[name] = entry_stat
+        self.entry_monitor(self.lpu_entry_stat, timestamp, name, value)
 
-        trigger_time = self.lpu_entry_stat[name]["trigger_time"]
-        print trigger_time
-        if trigger_time != 0:
-            untriggertime = self.dbmconfig[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_UNTRIGGER_TIME]
-            print "untriggertime is " + str(untriggertime)
-            if timestamp > (trigger_time + untriggertime):
-                self.lpu_entry_stat[name]["trigger_time"] = 0
-                self.lpu_entry_stat[name]["slot"] = 0
-                self.lpu_entry_stat[name]["index"] = 0
-
-        if self.lpu_entry_stat[name]["trigger_time"] == 0:
-            print self.dbmconfig.config[key.JSON_LPU_MONITOR]
-            if self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == "==":
-                if value == self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
-                    hit = 1
-                else:
-                    hit = 0
-            elif self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == ">":
-                if value > self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
-                    hit = 1
-                else:
-                    hit = 0
-            else:
-                if value < self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
-                    hit = 1
-                else:
-                    hit = 0
-
-        if hit:
-            hitcnt = self.lpu_entry_stat[name]["hit_cnt"] + 1
-            self.lpu_entry_stat[name]["hit_cnt"] = hitcnt
-
-        trigger = self.hit_status(hit, name)
-        if trigger:
-            triggercnt = self.lpu_entry_stat[name]["trigger_cnt"] + 1
-            self.lpu_entry_stat[name]["trigger_cnt"] = triggercnt
-            triggertime = self.lpu_entry_stat[name]["trigger_time"] + 1
-            self.lpu_entry_stat[name]["trigger_time"] = triggertime
-            #send_alarm_mail(alarm_str);
+        
 
 
-    def hit_status(self, hit, name):
+    def hit_status(self, entrystat, hit, name):
         """hit_status
         """
-        print hit
-        index = self.lpu_entry_stat[name]["index"]
-        slot = self.lpu_entry_stat[name]["slot"]
+        print "hit: " + str(hit)
+        index = entrystat[name]["index"]
+        slot = entrystat[name]["slot"]
         if hit:
             mask = 1 << index
-            self.lpu_entry_stat[name]["slot"] = slot | mask
+            entrystat[name]["slot"] = slot | mask
         else:
             mask = ~(1 << index)
-            self.lpu_entry_stat[name]["slot"] = slot & mask
+            entrystat[name]["slot"] = slot & mask
 
         index = index + 1
         measurements = self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_MEASURMENTS]
         if index == measurements:
             index = 0
 
-        self.lpu_entry_stat[name]["index"] = 0
+        entrystat[name]["index"] = index
         triggercnt = 0
-        slot = self.lpu_entry_stat[name]["slot"]
+        slot = entrystat[name]["slot"]
         for i in range(measurements):
             if slot & (1<<i):
                 triggercnt = triggercnt + 1
+
+        print "triggercnt is %d" % triggercnt
 
         if triggercnt >= self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_TRIGGER_THRE]:
             return 1
@@ -136,76 +241,163 @@ class DB(object):
             return 0
 
 
-
     def db_thread(self):
         """db_thread
         """
+        #select_time = 1493195084
         while 1:
-            print "1s"
+            time.sleep(1)
+
+            # if key.JSON_SMTP_SERVER not in self.dbmconfig.config:
+            #     continue
+            
+            # if key.JSON_SMTP_PORT not in self.dbmconfig.config:
+            #     continue
+
+            # if key.JSON_SMTP_USER not in self.dbmconfig.config:
+            #     continue
+
+            # if key.JSON_SMTP_PASSWD not in self.dbmconfig.config:
+            #     continue
+
+            # if key.JSON_SMTP_RECV not in self.dbmconfig.config:
+            #     continue
+            
+            # if key.JSON_SMTP_FROM not in self.dbmconfig.config:
+            #     continue
+
+            if key.JSON_GLOBAL_MONITOR not in self.dbmconfig.config:
+                continue
+            
+            if key.JSON_GLB_MEASURMENTS not in self.dbmconfig.config[key.JSON_GLOBAL_MONITOR]:
+                continue
+            
+            if key.JSON_GLB_TRIGGER_THRE not in self.dbmconfig.config[key.JSON_GLOBAL_MONITOR]:
+                continue
+            
+            if key.JSON_GLB_UNTRIGGER_TIME not in self.dbmconfig.config[key.JSON_GLOBAL_MONITOR]:
+                continue
+            
+
             select_time = int(time.time()) - 5
-            #lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
-            lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1492500753"
+            #select_time = select_time + 1
+            lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
+            #lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1493195084"
             print lpu_query_sql
 
             self.curs.execute(lpu_query_sql)
             results = self.curs.fetchall()
-            if results is None:
+            if len(results) == 0:
+                #print "no entry"
                 continue
 
             for row in results:
                 self.lpu_entry_monitor(select_time, "sequence", row[5])
-                loss_signal_event = row[6]
-                code_violations = row[7]
-                loss_sync_event = row[8]
-                lip_event = row[9]
-                nos_ols_events = row[10]
-                link_up_event = row[11]
-                frame_err = row[12]
-                el_service_frame = row[13]
-                fc_service_frame = row[14]
-                soff_frame = row[15]
-                basic_fc_ls = row[16]
-                fc_link_c_frame = row[17]
-                cc_state_frame = row[18]
-                other_bad_status_frame = row[19]
-                task_maga_frame = row[20]
-                logins = row[21]
-                logouts = row[22]
-                abts = row[23]
-                notifications = row[24]
-                rejects = row[25]
-                busy = row[26]
-                accepts = row[27]
-                loop_init_frames = row[28]
-                fps = row[29]
-                bps = row[30]
-                scsi_fps = row[31]
-                scsi_bps = row[32]
-                manage_fps = row[33]
-                manage_bps = row[34]
-                app_data_fps = row[35]
-                app_data_bps = row[36]
-                total_capacity_percent = row[37]
-                total_capacity = row[38]
-                scsi_capacity_percent = row[39]
-                total_capacity2 = row[40]
-                manage_capacity_percent = row[41]
-                total_capacity3 = row[42]
-                other_fps = row[43]
-                other_bps = row[44]
-                other_capacity_percent = row[45]
-                total_capacity4 = row[46]
-                pending_exchange = row[47]
-                max_pending_exchange = row[48]
-                speed = row[49]
-                signal_state = row[50]
-                min_frame_to_r_rdy = row[51]
-                max_frame_to_r_rdy = row[52]
-                avg_frame_to_r_rdy = row[53]
-                pending_frame_to_r_rdy = row[54]
-                print "sequence = %d, loss_signal_event=%d,code_violations=%d,loss_sync_eventage=%d,lip_event=%d,nos_ols_events=%d" % \
-                        (row[5], loss_signal_event, code_violations, loss_sync_event, lip_event, nos_ols_events )
+                self.lpu_entry_monitor(select_time, "loss_signal_event", row[6])
+                self.lpu_entry_monitor(select_time, "code_violations", row[7])
+                self.lpu_entry_monitor(select_time, "loss_sync_event", row[8])
+                self.lpu_entry_monitor(select_time, "lip_event", row[9])
+                self.lpu_entry_monitor(select_time, "nos_ols_events", row[10])
+                self.lpu_entry_monitor(select_time, "link_up_event", row[11])
+                self.lpu_entry_monitor(select_time, "frame_err", row[12])
+                self.lpu_entry_monitor(select_time, "el_service_frame", row[13])
+                self.lpu_entry_monitor(select_time, "fc_service_frame", row[14])
+                self.lpu_entry_monitor(select_time, "soff_frame", row[15])
+                self.lpu_entry_monitor(select_time, "basic_fc_ls", row[16])
+                self.lpu_entry_monitor(select_time, "fc_link_c_frame", row[17])
+                self.lpu_entry_monitor(select_time, "cc_state_frame", row[18])
+                self.lpu_entry_monitor(select_time, "other_bad_status_frame", row[19])
+                self.lpu_entry_monitor(select_time, "task_maga_frame", row[20])
+                self.lpu_entry_monitor(select_time, "logins", row[21])
+                self.lpu_entry_monitor(select_time, "logouts", row[22])
+                self.lpu_entry_monitor(select_time, "abts", row[23])
+                self.lpu_entry_monitor(select_time, "notifications", row[24])
+                self.lpu_entry_monitor(select_time, "rejects", row[25])
+                self.lpu_entry_monitor(select_time, "busy", row[26])
+                self.lpu_entry_monitor(select_time, "accepts", row[27])
+                self.lpu_entry_monitor(select_time, "loop_init_frames", row[28])
+                self.lpu_entry_monitor(select_time, "fps", row[29])
+                self.lpu_entry_monitor(select_time, "bps", row[30])
+                self.lpu_entry_monitor(select_time, "scsi_fps", row[31])
+                self.lpu_entry_monitor(select_time, "scsi_bps", row[32])
+                self.lpu_entry_monitor(select_time, "manage_fps", row[33])
+                self.lpu_entry_monitor(select_time, "manage_bps", row[34])
+                self.lpu_entry_monitor(select_time, "app_data_fps", row[35])
+                self.lpu_entry_monitor(select_time, "app_data_bps", row[36])
+                self.lpu_entry_monitor(select_time, "total_capacity_percent", row[37])
+                self.lpu_entry_monitor(select_time, "total_capacity", row[38])
+                self.lpu_entry_monitor(select_time, "scsi_capacity_percent", row[39])
+                self.lpu_entry_monitor(select_time, "total_capacity2", row[40])
+                self.lpu_entry_monitor(select_time, "manage_capacity_percent", row[41])
+                self.lpu_entry_monitor(select_time, "total_capacity3", row[42])
+                self.lpu_entry_monitor(select_time, "other_fps", row[43])
+                self.lpu_entry_monitor(select_time, "other_bps", row[44])
+                self.lpu_entry_monitor(select_time, "other_capacity_percent", row[45])
+                self.lpu_entry_monitor(select_time, "total_capacity4", row[46])
+                self.lpu_entry_monitor(select_time, "pending_exchange", row[47])
+                self.lpu_entry_monitor(select_time, "max_pending_exchange", row[48])
+                self.lpu_entry_monitor(select_time, "speed", row[49])
+                self.lpu_entry_monitor(select_time, "signal_state", row[50])
+                self.lpu_entry_monitor(select_time, "min_frame_to_r_rdy", row[51])
+                self.lpu_entry_monitor(select_time, "max_frame_to_r_rdy", row[52])
+                self.lpu_entry_monitor(select_time, "avg_frame_to_r_rdy", row[53])
+                self.lpu_entry_monitor(select_time, "pending_frame_to_r_rdy", row[54])
 
+            spu_query_sql = "SELECT * FROM SPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
+            #lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1493195084"
+            print spu_query_sql
 
+            self.curs.execute(spu_query_sql)
+            results = self.curs.fetchall()
+            if len(results) == 0:
+                continue
 
-            time.sleep(1)
+            for row in results:
+                i = row[6]
+                t = row[7]
+                l = row[8]
+                itl = "0x%06x-0x%06x-0x%04x" % (i, t, l)
+                print itl
+                self.spu_entry_monitor(select_time, itl, "bps", row[10])
+                self.spu_entry_monitor(select_time, itl, "fps", row[11])
+                self.spu_entry_monitor(select_time, itl, "tmf", row[12])
+                self.spu_entry_monitor(select_time, itl, "obsf", row[13])
+                self.spu_entry_monitor(select_time, itl, "ccsf", row[14])
+                self.spu_entry_monitor(select_time, itl, "rc_issued", row[15])
+                self.spu_entry_monitor(select_time, itl, "rc_comp", row[16])
+                self.spu_entry_monitor(select_time, itl, "min_rsize", row[17])
+                self.spu_entry_monitor(select_time, itl, "max_rsize", row[18])
+                self.spu_entry_monitor(select_time, itl, "rd_bps", row[19])
+                self.spu_entry_monitor(select_time, itl, "rd_pps", row[20])
+                self.spu_entry_monitor(select_time, itl, "min_cmd_to_first", row[21])
+                self.spu_entry_monitor(select_time, itl, "max_cmd_to_first", row[22])
+                self.spu_entry_monitor(select_time, itl, "avg_cmd_to_first", row[23])
+                self.spu_entry_monitor(select_time, itl, "min_last_to_resp", row[24])
+                self.spu_entry_monitor(select_time, itl, "max_last_to_resp", row[25])
+                self.spu_entry_monitor(select_time, itl, "avg_last_to_resp", row[26])
+                self.spu_entry_monitor(select_time, itl, "min_read_exchange_comp", row[27])
+                self.spu_entry_monitor(select_time, itl, "max_read_exchange_comp", row[28])
+                self.spu_entry_monitor(select_time, itl, "avg_read_exchange_comp", row[29])
+                self.spu_entry_monitor(select_time, itl, "write_cmd_issued", row[30])
+                self.spu_entry_monitor(select_time, itl, "write_cmd_comp", row[31])
+                self.spu_entry_monitor(select_time, itl, "min_wsize", row[32])
+                self.spu_entry_monitor(select_time, itl, "max_wsize", row[33])
+                self.spu_entry_monitor(select_time, itl, "wd_bps", row[34])
+                self.spu_entry_monitor(select_time, itl, "wd_pps", row[35])
+                self.spu_entry_monitor(select_time, itl, "min_cmd_to_trans_ready", row[36])
+                self.spu_entry_monitor(select_time, itl, "max_cmd_to_trans_ready", row[37])
+                self.spu_entry_monitor(select_time, itl, "avg_cmd_to_trans_ready", row[38])
+                self.spu_entry_monitor(select_time, itl, "min_trans_ready_to_first", row[39])
+                self.spu_entry_monitor(select_time, itl, "max_trans_ready_to_first", row[40])
+                self.spu_entry_monitor(select_time, itl, "avg_trans_ready_to_first", row[41])
+                self.spu_entry_monitor(select_time, itl, "min_last_data_to_resp", row[42])
+                self.spu_entry_monitor(select_time, itl, "max_last_data_to_resp", row[43])
+                self.spu_entry_monitor(select_time, itl, "avg_last_data_to_resp", row[44])
+                self.spu_entry_monitor(select_time, itl, "min_write_exchange_comp", row[45])
+                self.spu_entry_monitor(select_time, itl, "max_write_exchange_comp", row[46])
+                self.spu_entry_monitor(select_time, itl, "avg_write_exchange_comp", row[47])
+                self.spu_entry_monitor(select_time, itl, "pending_exchanges", row[48])
+                self.spu_entry_monitor(select_time, itl, "min_pending_exchanges", row[49])
+                self.spu_entry_monitor(select_time, itl, "max_pending_exchanges", row[50])
+                self.spu_entry_monitor(select_time, itl, "bps_percent", row[51])
+                self.spu_entry_monitor(select_time, itl, "fps_percent", row[52])

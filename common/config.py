@@ -13,6 +13,7 @@ class Config(object):
 
     def __init__(self):
         self.lpu_entry_stat = {}
+        self.spu_entry_stat = {}
         self.config = {}
         self.spu_monitor = {}  # itl_name is key
 
@@ -40,11 +41,13 @@ class Config(object):
         print key.JSON_SMTP_SERVER
         json_obj = json.loads(json_string)
 
+        self.config = json_obj
+
         # SMTP Config
-        self.json_smtp_parser(json_obj)
+        #self.json_smtp_parser(json_obj)
 
         # Global Monitor Para
-        self.json_global_monitor_parser(json_obj)
+        #self.json_global_monitor_parser(json_obj)
 
         print self.config
         self.json_config_save2file()
