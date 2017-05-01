@@ -2,7 +2,7 @@
 """main.py
 """
 
-import time
+import time, logging
 
 from common import config, dbm, db
 
@@ -11,6 +11,8 @@ from common import config, dbm, db
 def dbm_main():
     """main
     """
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s', filename='./dbm.log', filemode='a')
+    
     dbmconfig = config.Config()
     dbmconfig.json_config_load_file()
 
@@ -23,7 +25,7 @@ def dbm_main():
     try:
         while True:
             time.sleep(1)
-        print 'main function finished'
+        logging.debug('main function finished')
     except KeyboardInterrupt:
         print '^C received, shutting down the web server'
 

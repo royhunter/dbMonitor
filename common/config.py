@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """config.py
 """
+import logging
 
 import json
 import os
@@ -32,24 +33,14 @@ class Config(object):
         file_p = open(Config.CONFIG_FILE_NAME, 'r')
         self.config = json.load(file_p)
         file_p.close()
-        print self.config
+        logging.debug(self.config)
 
     def config_json_parser(self, json_string):
         """config_json_parser
         """
-        print "config_json_parser"
-        print key.JSON_SMTP_SERVER
         json_obj = json.loads(json_string)
-
         self.config = json_obj
-
-        # SMTP Config
-        #self.json_smtp_parser(json_obj)
-
-        # Global Monitor Para
-        #self.json_global_monitor_parser(json_obj)
-
-        print self.config
+        logging.debug(self.config)
         self.json_config_save2file()
 
     def json_smtp_parser(self, json_object):
@@ -100,7 +91,7 @@ class Config(object):
             return
 
         itl_list = json_object[key.JSON_SPU_MONITOR]
-        print itl_list
+        #print itl_list
         if itl_list is None:
             return
 

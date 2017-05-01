@@ -3,8 +3,11 @@
 
 import threading
 import time
-
+import logging
 import MySQLdb
+
+from email.mime.text import MIMEText
+import smtplib
 
 from . import key
 
@@ -28,9 +31,9 @@ class DB(object):
     def start(self):
         """start
         """
-        print "start db connect"
+        logging.debug("start db connect")
         self.conn = MySQLdb.connect(host=self.host, port=3306, user=self.user, passwd=self.passwd)
-        print "db connect done"
+        logging.debug("db connect done")
         self.curs = self.conn.cursor()
         self.conn.select_db(self.dbname)
         self.dbt.daemon = True
@@ -49,39 +52,39 @@ class DB(object):
             entrystat[name] = entry_stat
 
         trigger_time = entrystat[name]["trigger_time"]
-        print "last trigger time %d" % trigger_time
+        #print "last trigger time %d" % trigger_time
         if trigger_time != 0:
             untriggertime = self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_UNTRIGGER_TIME]
-            print "untriggertime is " + str(untriggertime)
+            #print "untriggertime is " + str(untriggertime)
             offset = timestamp - trigger_time
-            print "%d second passed" % offset
+            #print "%d second passed" % offset
             if timestamp > (trigger_time + untriggertime):
-                print "clear stat"
+                #print "clear stat"
                 entrystat[name]["trigger_time"] = 0
                 entrystat[name]["slot"] = 0
                 entrystat[name]["index"] = 0
             else:
-                print "no need send alarm"
+                #print "no need send alarm"
                 return
 
         hit = 0
         if entrystat[name]["trigger_time"] == 0:
-            print self.dbmconfig.config[key.JSON_SPU_MONITOR]
+            #print self.dbmconfig.config[key.JSON_SPU_MONITOR]
             if self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_OP] == "==":
-                print "=="
+                #print "=="
                 if value == self.dbmconfig.config[key.JSON_LPU_MONITOR][itl][name][key.JSON_THRESHOLD]:
                     hit = 1
                 else:
                     hit = 0
             elif self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_OP] == ">":
-                print ">"
-                print "value: " + str(value)
+                #print ">"
+                #print "value: " + str(value)
                 if value > self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_THRESHOLD]:
                     hit = 1
                 else:
                     hit = 0
             else:
-                print "<"
+                #print "<"
                 if value < self.dbmconfig.config[key.JSON_SPU_MONITOR][itl][name][key.JSON_THRESHOLD]:
                     hit = 1
                 else:
@@ -96,8 +99,30 @@ class DB(object):
             triggercnt = entrystat[name]["trigger_cnt"] + 1
             entrystat[name]["trigger_cnt"] = triggercnt
             entrystat[name]["trigger_time"] = timestamp
-            print "send alarm mail"
-            #send_alarm_mail(alarm_str);
+            logging.debug("send alarm mail")
+            alarm_str = "itl: %s, name: %s, value: %s" % (itl, name, str(value))
+            send_alarm_mail(alarm_str);
+
+    def send_alarm_mail(self, alarm_str):
+        msg = MIMEText(alarm_str, 'plain', 'utf-8')
+
+        smtp_server = dbmconfig.config[key.JSON_SMTP_SERVER]
+        from_addr = dbmconfig.config[key.JSON_SMTP_FROM]
+        to_addr = dbmconfig.config[key.JSON_SMTP_RECV]
+        user = dbmconfig.config[key.JSON_SMTP_USER]
+        password = dbmconfig.config[key.JSON_SMTP_PASSWD]
+        port = dbmconfig.config[key.JSON_SMTP_PORT]
+
+        server = smtplib.SMTP(smtp_server, port)
+        server.set_debuglevel(1)
+        try:
+            server.login(user, password)
+            server.sendmail(from_addr, [to_addr], msg.as_string())
+            server.quit()
+        except:
+            logging.debug("send mail error")
+ 
+        return
     
     
     def entry_monitor(self, entrystat, timestamp, name, value):
@@ -112,39 +137,39 @@ class DB(object):
             entrystat[name] = entry_stat
 
         trigger_time = entrystat[name]["trigger_time"]
-        print "last trigger time %d" % trigger_time
+        #print "last trigger time %d" % trigger_time
         if trigger_time != 0:
             untriggertime = self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_UNTRIGGER_TIME]
-            print "untriggertime is " + str(untriggertime)
+            #print "untriggertime is " + str(untriggertime)
             offset = timestamp - trigger_time
-            print "%d second passed" % offset
+            #print "%d second passed" % offset
             if timestamp > (trigger_time + untriggertime):
-                print "clear stat"
+                #print "clear stat"
                 entrystat[name]["trigger_time"] = 0
                 entrystat[name]["slot"] = 0
                 entrystat[name]["index"] = 0
             else:
-                print "no need send alarm"
+                #print "no need send alarm"
                 return
 
         hit = 0
         if entrystat[name]["trigger_time"] == 0:
-            print self.dbmconfig.config[key.JSON_LPU_MONITOR]
+            #print self.dbmconfig.config[key.JSON_LPU_MONITOR]
             if self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == "==":
-                print "=="
+                #print "=="
                 if value == self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
                     hit = 1
                 else:
                     hit = 0
             elif self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_OP] == ">":
-                print ">"
-                print "value: " + str(value)
+                #print ">"
+                #print "value: " + str(value)
                 if value > self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
                     hit = 1
                 else:
                     hit = 0
             else:
-                print "<"
+                #print "<"
                 if value < self.dbmconfig.config[key.JSON_LPU_MONITOR][name][key.JSON_THRESHOLD]:
                     hit = 1
                 else:
@@ -159,8 +184,9 @@ class DB(object):
             triggercnt = entrystat[name]["trigger_cnt"] + 1
             entrystat[name]["trigger_cnt"] = triggercnt
             entrystat[name]["trigger_time"] = timestamp
-            print "send alarm mail"
-            #send_alarm_mail(alarm_str);
+            logging.debug("send alarm mail")
+            alarm_str = "LPU: name: %s, value: %s" % (name, str(value))
+            send_alarm_mail(alarm_str);
 
 
     def spu_entry_monitor(self, timestamp, itl, name, value):
@@ -211,7 +237,7 @@ class DB(object):
     def hit_status(self, entrystat, hit, name):
         """hit_status
         """
-        print "hit: " + str(hit)
+        #print "hit: " + str(hit)
         index = entrystat[name]["index"]
         slot = entrystat[name]["slot"]
         if hit:
@@ -233,7 +259,7 @@ class DB(object):
             if slot & (1<<i):
                 triggercnt = triggercnt + 1
 
-        print "triggercnt is %d" % triggercnt
+        #print "triggercnt is %d" % triggercnt
 
         if triggercnt >= self.dbmconfig.config[key.JSON_GLOBAL_MONITOR][key.JSON_GLB_TRIGGER_THRE]:
             return 1
@@ -244,27 +270,26 @@ class DB(object):
     def db_thread(self):
         """db_thread
         """
-        #select_time = 1493195084
         while 1:
             time.sleep(1)
 
-            # if key.JSON_SMTP_SERVER not in self.dbmconfig.config:
-            #     continue
+            if key.JSON_SMTP_SERVER not in self.dbmconfig.config:
+                continue
             
-            # if key.JSON_SMTP_PORT not in self.dbmconfig.config:
-            #     continue
+            if key.JSON_SMTP_PORT not in self.dbmconfig.config:
+                continue
 
-            # if key.JSON_SMTP_USER not in self.dbmconfig.config:
-            #     continue
+            if key.JSON_SMTP_USER not in self.dbmconfig.config:
+                continue
 
-            # if key.JSON_SMTP_PASSWD not in self.dbmconfig.config:
-            #     continue
+            if key.JSON_SMTP_PASSWD not in self.dbmconfig.config:
+                continue
 
-            # if key.JSON_SMTP_RECV not in self.dbmconfig.config:
-            #     continue
+            if key.JSON_SMTP_RECV not in self.dbmconfig.config:
+                continue
             
-            # if key.JSON_SMTP_FROM not in self.dbmconfig.config:
-            #     continue
+            if key.JSON_SMTP_FROM not in self.dbmconfig.config:
+                continue
 
             if key.JSON_GLOBAL_MONITOR not in self.dbmconfig.config:
                 continue
@@ -280,10 +305,8 @@ class DB(object):
             
 
             select_time = int(time.time()) - 5
-            #select_time = select_time + 1
             lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
-            #lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1493195084"
-            print lpu_query_sql
+            #print lpu_query_sql
 
             self.curs.execute(lpu_query_sql)
             results = self.curs.fetchall()
@@ -345,7 +368,7 @@ class DB(object):
 
             spu_query_sql = "SELECT * FROM SPU_TABLE_0 WHERE MyTimeStamp=" + str(select_time)
             #lpu_query_sql = "SELECT * FROM LPU_TABLE_0 WHERE MyTimeStamp=1493195084"
-            print spu_query_sql
+            #print spu_query_sql
 
             self.curs.execute(spu_query_sql)
             results = self.curs.fetchall()
@@ -357,7 +380,7 @@ class DB(object):
                 t = row[7]
                 l = row[8]
                 itl = "0x%06x-0x%06x-0x%04x" % (i, t, l)
-                print itl
+                #print itl
                 self.spu_entry_monitor(select_time, itl, "bps", row[10])
                 self.spu_entry_monitor(select_time, itl, "fps", row[11])
                 self.spu_entry_monitor(select_time, itl, "tmf", row[12])

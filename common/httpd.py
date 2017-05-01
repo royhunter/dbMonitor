@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """httpd.py
 """
-import socket
+import socket,logging
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 class ProxyUrlHandle(object):
@@ -109,7 +109,7 @@ class HttpServer(object):
         """
         self.server = MyHttpServer(('', self.port), ProxyHttpSeverHandle,
                                    self.dbmconfig, self.urlhandle)
-        print 'Started httpserver on port ', self.port
+        logging.debug('Started httpserver port %d' % self.port)
         self.server.allow_reuse_address = True
         self.server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.serve_forever()
