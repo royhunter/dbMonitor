@@ -186,7 +186,7 @@ class DB(object):
             entrystat[name]["trigger_time"] = timestamp
             logging.debug("send alarm mail")
             alarm_str = "LPU: name: %s, value: %s" % (name, str(value))
-            send_alarm_mail(alarm_str);
+            self.send_alarm_mail(alarm_str);
 
 
     def spu_entry_monitor(self, timestamp, itl, name, value):
